@@ -3,7 +3,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Complaint, ActivityLog, Notification, UserRole, ComplaintStatus } from '../lib/types';
 
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+const getHeaders = () => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('sgp_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+  return headers;
+};
 
 // Pre-seeded Demo Users
 export const DEMO_USERS: User[] = [
@@ -11,7 +22,7 @@ export const DEMO_USERS: User[] = [
   { id: 'usr-s2', email: 'kumkum@student.edu', name: 'Kumkum Sen', role: 'student', avatar: 'KS' },
   { id: 'usr-s3', email: 'roshan@student.edu', name: 'Roshan Kumar', role: 'student', avatar: 'RK' },
   
-  { id: 'usr-t1', email: 'kashif@teacher.edu', name: 'Prof. Kashif Sheikh', role: 'teacher', department: 'Lecturer / ERP / Marks', avatar: 'KS' },
+  { id: 'usr-t1', email: 'academics@teacher.edu', name: 'Prof. Kashif Sheikh', role: 'teacher', department: 'Lecturer / ERP / Marks', avatar: 'KS' },
   { id: 'usr-t2', email: 'maintenance@teacher.edu', name: 'Maintenance Team', role: 'teacher', department: 'Maintenance', avatar: 'MT' },
   { id: 'usr-t3', email: 'grievance@teacher.edu', name: 'Grievance Team', role: 'teacher', department: 'Harassment', avatar: 'GT' },
   
@@ -80,6 +91,89 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setIsFastSlaMode(prev => !prev);
   };
 
+  // Active Sync with Backend Engine
+  const syncWithBackend = async () => {
+    try {
+      const headers = getHeaders();
+      const complaintsRes = await fetch(`${BACKEND_URL}/api/complaints`, { headers });
+      const logsRes = await fetch(`${BACKEND_URL}/api/logs`, { headers });
+      const notifsRes = await fetch(`${BACKEND_URL}/api/notifications`, { headers });
+
+      if (complaintsRes.ok && logsRes.ok && notifsRes.ok) {
+        const dbComplaints = await complaintsRes.json();
+        const dbLogs = await logsRes.json();
+        const dbNotifs = await notifsRes.json();
+
+        const mappedComplaints: Complaint[] = dbComplaints.map((c: any) => ({
+          id: c.id,
+          title: c.title,
+          description: c.description,
+          category: c.category,
+          status: c.status,
+          anonymous: c.anonymous === 1 || c.anonymous === true,
+          protectedIdentity: c.protected_identity === 1 || c.protected_identity === true,
+          priority: c.priority || 'Medium',
+          studentId: c.student_id,
+          studentName: c.student_name,
+          studentEmail: c.student_email,
+          assignedTeacherId: c.assigned_teacher_id,
+          assignedTeacherName: c.assigned_teacher_name,
+          supportCount: c.support_count || 0,
+          supportedBy: c.supported_by ? JSON.parse(c.supported_by) : [],
+          createdAt: c.created_at,
+          updatedAt: c.updated_at,
+          escalationTimerEnds: c.escalation_timer_ends,
+          resolvedAt: c.resolved_at,
+          resolvedBy: c.resolved_by,
+          resolutionDetails: c.resolution_details,
+          resolutionRemarks: c.resolution_remarks,
+          feedbackRating: c.feedback_rating,
+          feedbackComment: c.feedback_comment,
+          reopenedCount: c.reopened_count || 0,
+          attachments: c.attachments ? JSON.parse(c.attachments) : []
+        }));
+
+        const mappedLogs: ActivityLog[] = dbLogs.map((l: any) => ({
+          id: `log-${l.id}`,
+          complaintId: l.complaint_id,
+          complaintTitle: l.complaint_title,
+          userRole: l.user_role,
+          userName: l.user_name,
+          action: l.action,
+          details: l.details,
+          timestamp: l.timestamp
+        }));
+
+        const mappedNotifs: Notification[] = dbNotifs.map((n: any) => ({
+          id: `notif-${n.id}`,
+          recipientRole: n.recipient_role,
+          recipientId: n.recipient_id,
+          title: n.title,
+          message: n.message,
+          read: n.is_read === 1 || n.is_read === true,
+          complaintId: n.complaint_id,
+          timestamp: n.timestamp
+        }));
+
+        const filteredComplaints = mappedComplaints.filter((c: Complaint) => c.id !== 'GRV-6909' && c.id !== 'GRV-3331');
+        const filteredLogs = mappedLogs.filter((l: ActivityLog) => l.complaintId !== 'GRV-6909' && l.complaintId !== 'GRV-3331');
+        const filteredNotifs = mappedNotifs.filter((n: Notification) => n.complaintId !== 'GRV-6909' && n.complaintId !== 'GRV-3331');
+
+        setComplaints(filteredComplaints);
+        setActivityLogs(filteredLogs);
+        setNotifications(filteredNotifs);
+
+        localStorage.setItem('sgp_complaints', JSON.stringify(filteredComplaints));
+        localStorage.setItem('sgp_logs', JSON.stringify(filteredLogs));
+        localStorage.setItem('sgp_notifs', JSON.stringify(filteredNotifs));
+        return true;
+      }
+    } catch (err) {
+      console.warn('⚠️ Sync polling request failed or backend server offline.');
+    }
+    return false;
+  };
+
   // Initialize and Seed Data (Dual-Mode Integration Check)
   useEffect(() => {
     const loadInitialData = async () => {
@@ -93,81 +187,11 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
 
         console.log('📡 Syncing with backend database server...');
-        const complaintsRes = await fetch(`${BACKEND_URL}/api/complaints`);
-        const logsRes = await fetch(`${BACKEND_URL}/api/logs`);
-        const notifsRes = await fetch(`${BACKEND_URL}/api/notifications`);
-
-        if (complaintsRes.ok && logsRes.ok && notifsRes.ok) {
-          const dbComplaints = await complaintsRes.json();
-          const dbLogs = await logsRes.json();
-          const dbNotifs = await notifsRes.json();
-
-          const mappedComplaints: Complaint[] = dbComplaints.map((c: any) => ({
-            id: c.id,
-            title: c.title,
-            description: c.description,
-            category: c.category,
-            status: c.status,
-            anonymous: c.anonymous === 1 || c.anonymous === true,
-            protectedIdentity: c.protected_identity === 1 || c.protected_identity === true,
-            priority: c.priority || 'Medium',
-            studentId: c.student_id,
-            studentName: c.student_name,
-            studentEmail: c.student_email,
-            assignedTeacherId: c.assigned_teacher_id,
-            assignedTeacherName: c.assigned_teacher_name,
-            supportCount: c.support_count || 0,
-            supportedBy: c.supported_by ? JSON.parse(c.supported_by) : [],
-            createdAt: c.created_at,
-            updatedAt: c.updated_at,
-            escalationTimerEnds: c.escalation_timer_ends,
-            resolvedAt: c.resolved_at,
-            resolvedBy: c.resolved_by,
-            resolutionDetails: c.resolution_details,
-            resolutionRemarks: c.resolution_remarks,
-            feedbackRating: c.feedback_rating,
-            feedbackComment: c.feedback_comment,
-            reopenedCount: c.reopened_count || 0,
-            attachments: c.attachments ? JSON.parse(c.attachments) : []
-          }));
-
-          const mappedLogs: ActivityLog[] = dbLogs.map((l: any) => ({
-            id: `log-${l.id}`,
-            complaintId: l.complaint_id,
-            complaintTitle: l.complaint_title,
-            userRole: l.user_role,
-            userName: l.user_name,
-            action: l.action,
-            details: l.details,
-            timestamp: l.timestamp
-          }));
-
-          const mappedNotifs: Notification[] = dbNotifs.map((n: any) => ({
-            id: `notif-${n.id}`,
-            recipientRole: n.recipient_role,
-            recipientId: n.recipient_id,
-            title: n.title,
-            message: n.message,
-            read: n.is_read === 1 || n.is_read === true,
-            complaintId: n.complaint_id,
-            timestamp: n.timestamp
-          }));
-
-          const filteredComplaints = mappedComplaints.filter((c: Complaint) => c.id !== 'GRV-6909' && c.id !== 'GRV-3331');
-          const filteredLogs = mappedLogs.filter((l: ActivityLog) => l.complaintId !== 'GRV-6909' && l.complaintId !== 'GRV-3331');
-          const filteredNotifs = mappedNotifs.filter((n: Notification) => n.complaintId !== 'GRV-6909' && n.complaintId !== 'GRV-3331');
-
-          setComplaints(filteredComplaints);
-          setActivityLogs(filteredLogs);
-          setNotifications(filteredNotifs);
-
-          localStorage.setItem('sgp_complaints', JSON.stringify(filteredComplaints));
-          localStorage.setItem('sgp_logs', JSON.stringify(filteredLogs));
-          localStorage.setItem('sgp_notifs', JSON.stringify(filteredNotifs));
-          console.log('✅ Real Database synchronization successful!');
-        } else {
-          throw new Error('API server returned error status');
+        const success = await syncWithBackend();
+        if (!success) {
+          throw new Error('Initial backend sync returned failure status');
         }
+        console.log('✅ Real Database synchronization successful!');
       } catch (err) {
         console.warn('⚠️ Real Database server offline. Operating in fallback Sandbox Mode.');
         // Standard Local Storage Fallback
@@ -208,6 +232,15 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     loadInitialData();
   }, []);
+
+  // 7-Second Device-to-Device Synchronization Loop
+  useEffect(() => {
+    if (!currentUser) return;
+    const interval = setInterval(() => {
+      syncWithBackend();
+    }, 7000);
+    return () => clearInterval(interval);
+  }, [currentUser]);
 
   // Save changes locally (SGP Local Sandbox cache)
   const syncStorage = (newComplaints: Complaint[], newLogs: ActivityLog[], newNotifs: Notification[]) => {
@@ -264,7 +297,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           // Trigger backend update for escalation
           fetch(`${BACKEND_URL}/api/complaints/${c.id}/status`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getHeaders(),
             body: JSON.stringify({ status: 'Escalated', userName: 'System SLA Bot', userRole: 'admin' })
           }).catch(() => console.warn('Escalation backend sync missed.'));
 
@@ -307,15 +340,16 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     const matchedUser = DEMO_USERS.find(u => u.email === lowercaseEmail);
-    let expectedPassword = '';
-    if (lowercaseEmail === 'sonal@student.edu') expectedPassword = 'Sonal@123';
-    else if (lowercaseEmail === 'kumkum@student.edu') expectedPassword = 'Kumkum@123';
-    else if (lowercaseEmail === 'roshan@student.edu') expectedPassword = 'Roshan@123';
-    else if (lowercaseEmail === 'kashif@teacher.edu') expectedPassword = 'Kashif@123';
-    else if (lowercaseEmail === 'maintenance@teacher.edu') expectedPassword = 'Maintain@123';
-    else if (lowercaseEmail === 'grievance@teacher.edu') expectedPassword = 'Grievance@123';
-    else if (lowercaseEmail === 'hod@college.edu') expectedPassword = 'Hod@123';
-    else if (lowercaseEmail === 'admin@college.edu') expectedPassword = 'Admin@123';
+    // Support both standard password123 and original credential files as safe local emulator fallbacks
+    const isOfflinePasswordValid = password === 'password123' ||
+      (lowercaseEmail === 'sonal@student.edu' && password === 'Sonal@123') ||
+      (lowercaseEmail === 'kumkum@student.edu' && password === 'Kumkum@123') ||
+      (lowercaseEmail === 'roshan@student.edu' && password === 'Roshan@123') ||
+      (lowercaseEmail === 'academics@teacher.edu' && password === 'Kashif@123') ||
+      (lowercaseEmail === 'maintenance@teacher.edu' && password === 'Maintain@123') ||
+      (lowercaseEmail === 'grievance@teacher.edu' && password === 'Grievance@123') ||
+      (lowercaseEmail === 'hod@college.edu' && password === 'Hod@123') ||
+      (lowercaseEmail === 'admin@college.edu' && password === 'Admin@123');
 
     try {
       const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
@@ -329,9 +363,14 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (response.ok && data.user) {
         setCurrentUser(data.user);
         localStorage.setItem('sgp_user', JSON.stringify(data.user));
+        if (data.token) {
+          localStorage.setItem('sgp_token', data.token);
+        }
+        // Immediately sync data with token
+        await syncWithBackend();
         return { success: true, role: data.user.role };
       } else {
-        if (matchedUser && password === expectedPassword) {
+        if (matchedUser && isOfflinePasswordValid) {
           console.warn('Backend authentication failed. Using offline sandbox cache.');
           setCurrentUser(matchedUser);
           localStorage.setItem('sgp_user', JSON.stringify(matchedUser));
@@ -344,7 +383,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (!matchedUser) {
         return { success: false, error: 'User account not registered in university database.' };
       }
-      if (password !== expectedPassword) {
+      if (!isOfflinePasswordValid) {
         return { success: false, error: 'Incorrect portal credentials. Please check password.' };
       }
       setCurrentUser(matchedUser);
@@ -356,6 +395,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem('sgp_user');
+    localStorage.removeItem('sgp_token');
   };
 
   // Submit new complaint
@@ -447,11 +487,11 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       timestamp: now.toISOString()
     };
 
-    // REST Sync Action
+     // REST Sync Action
     try {
       await fetch(`${BACKEND_URL}/api/complaints`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({
           title, description, category, priority, anonymous,
           protectedIdentity, studentId: currentUser.id, studentName: currentUser.name, studentEmail: currentUser.email,
@@ -566,7 +606,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       await fetch(`${BACKEND_URL}/api/complaints/${complaintId}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({
           status,
           userName: currentUser.name,
@@ -631,7 +671,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       await fetch(`${BACKEND_URL}/api/complaints/${complaintId}/resolve`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ resolutionDetails, resolutionRemarks, resolvedBy: currentUser.name, status: 'Pending HOD Verification' })
       });
     } catch (err) {
@@ -691,7 +731,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       await fetch(`${BACKEND_URL}/api/complaints/${complaintId}/reopen`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ reason, studentName: currentUser.name })
       });
     } catch (err) {
@@ -747,7 +787,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       await fetch(`${BACKEND_URL}/api/complaints/${complaintId}/rate`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ rating, comment, studentName: currentUser.name })
       });
     } catch (err) {
@@ -860,7 +900,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       await fetch(`${BACKEND_URL}/api/complaints/${complaintId}/support`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ studentId: currentUser.id, studentName: currentUser.name })
       });
     } catch (err) {
@@ -932,7 +972,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       await fetch(`${BACKEND_URL}/api/complaints/${complaintId}/reassign`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({
           teacherId,
           teacherName: targetTeacher.name,
@@ -971,7 +1011,8 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // REST Sync Action
     try {
       await fetch(`${BACKEND_URL}/api/complaints/${complaintId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getHeaders()
       });
     } catch (err) {
       console.warn('Failed to sync deletion with backend database');
@@ -1021,7 +1062,8 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     try {
       await fetch(`${BACKEND_URL}/api/notifications/${rawId}/read`, {
-        method: 'PUT'
+        method: 'PUT',
+        headers: getHeaders()
       });
     } catch (err) {
       console.warn('Failed to sync notification read state');

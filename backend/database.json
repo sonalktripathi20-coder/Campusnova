@@ -3,7 +3,7 @@
     {
       "id": "usr-s1",
       "email": "sonal@student.edu",
-      "password": "Sonal@123",
+      "password": "$2a$10$FOhvjk8NagjncQQX.HPJh.SVSUxRo7fDanN2O91ZAViR/gyjtj73a",
       "name": "Sonal Tripathi",
       "role": "student",
       "department": null,
@@ -12,7 +12,7 @@
     {
       "id": "usr-s2",
       "email": "kumkum@student.edu",
-      "password": "Kumkum@123",
+      "password": "$2a$10$FOhvjk8NagjncQQX.HPJh.SVSUxRo7fDanN2O91ZAViR/gyjtj73a",
       "name": "Kumkum Sen",
       "role": "student",
       "department": null,
@@ -21,7 +21,7 @@
     {
       "id": "usr-s3",
       "email": "roshan@student.edu",
-      "password": "Roshan@123",
+      "password": "$2a$10$FOhvjk8NagjncQQX.HPJh.SVSUxRo7fDanN2O91ZAViR/gyjtj73a",
       "name": "Roshan Kumar",
       "role": "student",
       "department": null,
@@ -29,8 +29,8 @@
     },
     {
       "id": "usr-t1",
-      "email": "kashif@teacher.edu",
-      "password": "Kashif@123",
+      "email": "academics@teacher.edu",
+      "password": "$2a$10$FOhvjk8NagjncQQX.HPJh.SVSUxRo7fDanN2O91ZAViR/gyjtj73a",
       "name": "Prof. Kashif Sheikh",
       "role": "teacher",
       "department": "Lecturer / ERP / Marks",
@@ -39,7 +39,7 @@
     {
       "id": "usr-t2",
       "email": "maintenance@teacher.edu",
-      "password": "Maintain@123",
+      "password": "$2a$10$FOhvjk8NagjncQQX.HPJh.SVSUxRo7fDanN2O91ZAViR/gyjtj73a",
       "name": "Maintenance Team",
       "role": "teacher",
       "department": "Maintenance",
@@ -48,7 +48,7 @@
     {
       "id": "usr-t3",
       "email": "grievance@teacher.edu",
-      "password": "Grievance@123",
+      "password": "$2a$10$FOhvjk8NagjncQQX.HPJh.SVSUxRo7fDanN2O91ZAViR/gyjtj73a",
       "name": "Grievance Team",
       "role": "teacher",
       "department": "Harassment",
@@ -57,7 +57,7 @@
     {
       "id": "usr-h1",
       "email": "hod@college.edu",
-      "password": "Hod@123",
+      "password": "$2a$10$FOhvjk8NagjncQQX.HPJh.SVSUxRo7fDanN2O91ZAViR/gyjtj73a",
       "name": "Dr. Anand Verma (HOD)",
       "role": "hod",
       "department": null,
@@ -66,7 +66,7 @@
     {
       "id": "usr-a1",
       "email": "admin@college.edu",
-      "password": "Admin@123",
+      "password": "$2a$10$FOhvjk8NagjncQQX.HPJh.SVSUxRo7fDanN2O91ZAViR/gyjtj73a",
       "name": "Director Sarah (Admin)",
       "role": "admin",
       "department": null,

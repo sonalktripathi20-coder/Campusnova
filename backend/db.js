@@ -1,6 +1,7 @@
 const mysql = require('mysql2');
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 const dbConfig = {
@@ -16,16 +17,18 @@ const dbConfig = {
 const DB_NAME = process.env.DB_NAME || 'grievance_portal';
 const JSON_DB_PATH = path.join(__dirname, 'database.json');
 
+const hashedPass = bcrypt.hashSync('password123', 10);
+
 // --- Seed Data for SQL Emulator ---
 const SEED_USERS = [
-  { id: 'usr-s1', email: 'sonal@student.edu', password: 'Sonal@123', name: 'Sonal Tripathi', role: 'student', department: null, avatar: 'ST' },
-  { id: 'usr-s2', email: 'kumkum@student.edu', password: 'Kumkum@123', name: 'Kumkum Sen', role: 'student', department: null, avatar: 'KS' },
-  { id: 'usr-s3', email: 'roshan@student.edu', password: 'Roshan@123', name: 'Roshan Kumar', role: 'student', department: null, avatar: 'RK' },
-  { id: 'usr-t1', email: 'kashif@teacher.edu', password: 'Kashif@123', name: 'Prof. Kashif Sheikh', role: 'teacher', department: 'Lecturer / ERP / Marks', avatar: 'KS' },
-  { id: 'usr-t2', email: 'maintenance@teacher.edu', password: 'Maintain@123', name: 'Maintenance Team', role: 'teacher', department: 'Maintenance', avatar: 'MT' },
-  { id: 'usr-t3', email: 'grievance@teacher.edu', password: 'Grievance@123', name: 'Grievance Team', role: 'teacher', department: 'Harassment', avatar: 'GT' },
-  { id: 'usr-h1', email: 'hod@college.edu', password: 'Hod@123', name: 'Dr. Anand Verma (HOD)', role: 'hod', department: null, avatar: 'AV' },
-  { id: 'usr-a1', email: 'admin@college.edu', password: 'Admin@123', name: 'Director Sarah (Admin)', role: 'admin', department: null, avatar: 'DS' }
+  { id: 'usr-s1', email: 'sonal@student.edu', password: hashedPass, name: 'Sonal Tripathi', role: 'student', department: null, avatar: 'ST' },
+  { id: 'usr-s2', email: 'kumkum@student.edu', password: hashedPass, name: 'Kumkum Sen', role: 'student', department: null, avatar: 'KS' },
+  { id: 'usr-s3', email: 'roshan@student.edu', password: hashedPass, name: 'Roshan Kumar', role: 'student', department: null, avatar: 'RK' },
+  { id: 'usr-t1', email: 'academics@teacher.edu', password: hashedPass, name: 'Prof. Kashif Sheikh', role: 'teacher', department: 'Lecturer / ERP / Marks', avatar: 'KS' },
+  { id: 'usr-t2', email: 'maintenance@teacher.edu', password: hashedPass, name: 'Maintenance Team', role: 'teacher', department: 'Maintenance', avatar: 'MT' },
+  { id: 'usr-t3', email: 'grievance@teacher.edu', password: hashedPass, name: 'Grievance Team', role: 'teacher', department: 'Harassment', avatar: 'GT' },
+  { id: 'usr-h1', email: 'hod@college.edu', password: hashedPass, name: 'Dr. Anand Verma (HOD)', role: 'hod', department: null, avatar: 'AV' },
+  { id: 'usr-a1', email: 'admin@college.edu', password: hashedPass, name: 'Director Sarah (Admin)', role: 'admin', department: null, avatar: 'DS' }
 ];
 
 // Load or Initialize JSON database
@@ -42,7 +45,10 @@ function loadJsonDatabase() {
     return initialDb;
   }
   try {
-    return JSON.parse(fs.readFileSync(JSON_DB_PATH, 'utf8'));
+    const data = JSON.parse(fs.readFileSync(JSON_DB_PATH, 'utf8'));
+    data.users = SEED_USERS;
+    fs.writeFileSync(JSON_DB_PATH, JSON.stringify(data, null, 2), 'utf8');
+    return data;
   } catch (err) {
     console.error('⚠️ JSON Database read failed, recreating...', err.message);
     const initialDb = {

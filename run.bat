@@ -57,10 +57,8 @@ echo ========================================================
 echo   LAUNCHING EXPRESS BACKEND SERVER...
 echo ========================================================
 cd backend
-if not exist "node_modules\" (
-    echo ℹ️ Backend node_modules not found. Installing package dependencies. Please wait...
-    call npm install
-)
+echo ℹ️ Verifying backend dependencies...
+call npm install
 echo 🚀 Booting Express REST endpoints...
 call npm run dev
 cd ..
@@ -76,10 +74,8 @@ if not exist "node_modules\" (
     call npm install
 )
 cd backend
-if not exist "node_modules\" (
-    echo ℹ️ Backend node_modules not found. Installing. Please wait...
-    call npm install
-)
+echo ℹ️ Verifying and installing backend dependencies (including newly added JWT and Bcrypt libraries)...
+call npm install
 cd ..
 
 echo 🚀 Launching Express Backend Server in sub-window...

@@ -90,19 +90,70 @@ CREATE TABLE IF NOT EXISTS notifications (
     FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
 );
 
+-- 6. Feedback Table
+CREATE TABLE IF NOT EXISTS feedback (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    complaint_id VARCHAR(50) NOT NULL,
+    rating INT NOT NULL,
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
+);
+
+-- 7. Internal Notes Table
+CREATE TABLE IF NOT EXISTS internal_notes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    complaint_id VARCHAR(50) NOT NULL,
+    author_name VARCHAR(100) NOT NULL,
+    note TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
+);
+
+-- 8. Escalation Logs Table
+CREATE TABLE IF NOT EXISTS escalation_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    complaint_id VARCHAR(50) NOT NULL,
+    escalated_from VARCHAR(100),
+    escalated_to VARCHAR(100),
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
+);
+
+-- 9. Teacher Performance Table
+CREATE TABLE IF NOT EXISTS teacher_performance (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    teacher_id VARCHAR(50) NOT NULL,
+    resolved_count INT DEFAULT 0,
+    average_rating DECIMAL(3,2) DEFAULT 0.00,
+    sla_adherence_rate DECIMAL(5,2) DEFAULT 100.00,
+    FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 10. Security Logs Table
+CREATE TABLE IF NOT EXISTS security_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_email VARCHAR(100) NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    ip_address VARCHAR(45) DEFAULT NULL,
+    status VARCHAR(20) NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ========================================================
 -- PRE-SEEDED DEMO USERS DATA
 -- ========================================================
 
 INSERT INTO users (id, email, password, name, role, department, avatar) VALUES
-('usr-s1', 'sonal@student.edu', 'Sonal@123', 'Sonal Tripathi', 'student', NULL, 'ST'),
-('usr-s2', 'kumkum@student.edu', 'Kumkum@123', 'Kumkum Sen', 'student', NULL, 'KS'),
-('usr-s3', 'roshan@student.edu', 'Roshan@123', 'Roshan Kumar', 'student', NULL, 'RK'),
+('usr-s1', 'sonal@student.edu', 'password123', 'Sonal Tripathi', 'student', NULL, 'ST'),
+('usr-s2', 'kumkum@student.edu', 'password123', 'Kumkum Sen', 'student', NULL, 'KS'),
+('usr-s3', 'roshan@student.edu', 'password123', 'Roshan Kumar', 'student', NULL, 'RK'),
 
-('usr-t1', 'kashif@teacher.edu', 'Kashif@123', 'Prof. Kashif Sheikh', 'teacher', 'Lecturer / ERP / Marks', 'KS'),
-('usr-t2', 'maintenance@teacher.edu', 'Maintain@123', 'Maintenance Team', 'teacher', 'Maintenance', 'MT'),
-('usr-t3', 'grievance@teacher.edu', 'Grievance@123', 'Grievance Team', 'teacher', 'Harassment', 'GT'),
+('usr-t1', 'academics@teacher.edu', 'password123', 'Prof. Kashif Sheikh', 'teacher', 'Lecturer / ERP / Marks', 'KS'),
+('usr-t2', 'maintenance@teacher.edu', 'password123', 'Maintenance Team', 'teacher', 'Maintenance', 'MT'),
+('usr-t3', 'grievance@teacher.edu', 'password123', 'Grievance Team', 'teacher', 'Harassment', 'GT'),
 
-('usr-h1', 'hod@college.edu', 'Hod@123', 'Dr. Anand Verma (HOD)', 'hod', NULL, 'AV'),
-('usr-a1', 'admin@college.edu', 'Admin@123', 'Director Sarah (Admin)', 'admin', NULL, 'DS')
+('usr-h1', 'hod@college.edu', 'password123', 'Dr. Anand Verma (HOD)', 'hod', NULL, 'AV'),
+('usr-a1', 'admin@college.edu', 'password123', 'Director Sarah (Admin)', 'admin', NULL, 'DS')
 ON DUPLICATE KEY UPDATE id=id;

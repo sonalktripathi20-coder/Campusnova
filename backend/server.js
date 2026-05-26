@@ -1,16 +1,19 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const db = require('./db');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_institutional_key_core_nova';
 
 // Enable CORS for frontend integration
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type']
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
@@ -20,6 +23,24 @@ app.use((req, res, next) => {
   console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
   next();
 });
+
+// JWT Verification Middleware
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) return next();
+  const token = authHeader.split(' ')[1];
+  if (!token) return next();
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    console.warn('⚠️ Invalid or expired token received:', err.message);
+    next();
+  }
+};
+
+app.use(verifyToken);
 
 // ========================================================
 // REST API CONTROLLERS (Direct SQL queries with Emulation Fallbacks)
@@ -50,13 +71,23 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const user = rows[0];
-    // Password match validation
-    if (user.password !== password) {
+    
+    // Password validation: support secure bcrypt hashing with plaintext fallback for pre-seeded database scripts
+    const isPasswordValid = bcrypt.compareSync(password, user.password) || (password === user.password);
+    if (!isPasswordValid) {
       return res.status(401).json({ error: 'Incorrect portal credentials. Please check password.' });
     }
 
-    // Return session details (excluding password)
+    // Issue Secure JWT session token
+    const token = jwt.sign(
+      { id: user.id, role: user.role, email: user.email, department: user.department },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    // Return session details and security token
     res.json({
+      token,
       user: {
         id: user.id,
         email: user.email,
