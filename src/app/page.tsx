@@ -102,7 +102,7 @@ export default function MasterPortalPage() {
     { name: 'Sonal (Student)', email: 'sonal@student.edu', pass: 'Sonal@123', role: 'student' },
     { name: 'Kumkum (Student)', email: 'kumkum@student.edu', pass: 'Kumkum@123', role: 'student' },
     { name: 'Roshan (Student)', email: 'roshan@student.edu', pass: 'Roshan@123', role: 'student' },
-    { name: 'Prof. Kashif (Teacher)', email: 'kashif@teacher.edu', pass: 'Kashif@123', role: 'teacher' },
+    { name: 'Prof. Kashif (Teacher)', email: 'academics@teacher.edu', pass: 'Kashif@123', role: 'teacher' },
     { name: 'Maintenance (Teacher)', email: 'maintenance@teacher.edu', pass: 'Maintain@123', role: 'teacher' },
     { name: 'Grievance (Teacher)', email: 'grievance@teacher.edu', pass: 'Grievance@123', role: 'teacher' },
     { name: 'Dr. Anand (HOD)', email: 'hod@college.edu', pass: 'Hod@123', role: 'hod' },

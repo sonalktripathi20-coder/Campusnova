@@ -92,7 +92,7 @@ export default function AdminDashboard({ activeTab, setActiveTab }: SubDashboard
     { id: 'usr-s1', name: 'Sonal Tripathi', email: 'sonal@student.edu', role: 'Student', dept: 'Computer Science', status: 'Active' },
     { id: 'usr-s2', name: 'Kumkum Mandrawa', email: 'kumkum@student.edu', role: 'Student', dept: 'Information Technology', status: 'Active' },
     { id: 'usr-s3', name: 'Roshan Kumar', email: 'roshan@student.edu', role: 'Student', dept: 'Electrical Engineering', status: 'Active' },
-    { id: 'usr-t1', name: 'Prof. Kashif Sheikh', email: 'kashif@teacher.edu', role: 'Teacher', dept: 'Academics / Marks', status: 'Active' },
+    { id: 'usr-t1', name: 'Prof. Kashif Sheikh', email: 'academics@teacher.edu', role: 'Teacher', dept: 'Academics / Marks', status: 'Active' },
     { id: 'usr-t2', name: 'Maintenance Team', email: 'maintenance@teacher.edu', role: 'Teacher', dept: 'Infrastructure', status: 'Active' },
     { id: 'usr-t3', name: 'Grievance Team', email: 'grievance@teacher.edu', role: 'Teacher', dept: 'Harassment Compliance', status: 'Active' },
     { id: 'usr-h1', name: 'Dr. Anand (HOD)', email: 'hod@college.edu', role: 'HOD', dept: 'Computer Science & Engineering', status: 'Active' }
@@ -1092,7 +1092,7 @@ export default function AdminDashboard({ activeTab, setActiveTab }: SubDashboard
                     <input
                       type="email"
                       required
-                      placeholder="kashif@teacher.edu"
+                      placeholder="academics@teacher.edu"
                       value={newUserEmail}
                       onChange={(e) => setNewUserEmail(e.target.value)}
                       className="w-full bg-[#030712] border border-slate-800 focus:border-rose-500/30 rounded-xl py-2.5 px-3 text-xs text-slate-200 outline-none font-medium"
