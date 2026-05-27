@@ -138,7 +138,21 @@ const emulatedPool = {
         feedback_rating: null,
         feedback_comment: null,
         reopened_count: 0,
-        attachments: null
+        attachments: null,
+        // Supervision / operational custom fields initialized in emulator
+        priority: 'Medium',
+        is_emergency: false,
+        rapid_response_assigned: false,
+        is_frozen: false,
+        hod_notes: null,
+        warnings: null,
+        clarification_requests: null,
+        disciplinary_actions: null,
+        resolution_overrides: null,
+        escalated_to_admin: false,
+        escalation_reason: null,
+        escalation_severity: null,
+        escalation_urgency_notes: null
       };
 
       dbData.complaints.push(newComplaint);
@@ -273,6 +287,52 @@ const emulatedPool = {
       return [{ affectedRows: 0 }, []];
     }
 
+    // 12.5 Dynamic update query on complaints table
+    if (/UPDATE complaints SET/i.test(cleanSql) && /WHERE id = \?/i.test(cleanSql)) {
+      const id = params[params.length - 1];
+      const idx = dbData.complaints.findIndex(c => c.id === id);
+      if (idx !== -1) {
+        const setPart = cleanSql.match(/SET (.+) WHERE/i)?.[1];
+        if (setPart) {
+          const fields = setPart.split(',').map(f => f.trim().split(' ')[0].replace(/`/g, ''));
+          fields.forEach((field, i) => {
+            const val = params[i];
+            
+            // Map snake_case database columns to camelCase JS properties if necessary
+            let key = field;
+            if (field === 'assigned_teacher_id') key = 'assignedTeacherId';
+            else if (field === 'assigned_teacher_name') key = 'assignedTeacherName';
+            else if (field === 'escalation_timer_ends') key = 'escalationTimerEnds';
+            else if (field === 'resolved_at') key = 'resolvedAt';
+            else if (field === 'resolved_by') key = 'resolvedBy';
+            else if (field === 'resolution_details') key = 'resolutionDetails';
+            else if (field === 'resolution_remarks') key = 'resolutionRemarks';
+            else if (field === 'feedback_rating') key = 'feedbackRating';
+            else if (field === 'feedback_comment') key = 'feedbackComment';
+            else if (field === 'reopened_count') key = 'reopenedCount';
+            else if (field === 'protected_identity') key = 'protectedIdentity';
+            else if (field === 'is_emergency') key = 'isEmergency';
+            else if (field === 'rapid_response_assigned') key = 'rapidResponseAssigned';
+            else if (field === 'is_frozen') key = 'isFrozen';
+            else if (field === 'hod_notes') key = 'hodNotes';
+            else if (field === 'escalated_to_admin') key = 'escalatedToAdmin';
+            else if (field === 'escalation_reason') key = 'escalationReason';
+            else if (field === 'escalation_severity') key = 'escalationSeverity';
+            else if (field === 'escalation_urgency_notes') key = 'escalationUrgencyNotes';
+
+            dbData.complaints[idx][key] = val;
+            
+            // Also store as database-column-name in emulator to maintain perfect SQL likeness
+            dbData.complaints[idx][field] = val;
+          });
+          dbData.complaints[idx].updated_at = new Date().toISOString();
+          saveJsonDatabase(dbData);
+          return [{ affectedRows: 1 }, []];
+        }
+      }
+      return [{ affectedRows: 0 }, []];
+    }
+
     // 13. DELETE FROM complaints WHERE id = ?
     if (/DELETE FROM complaints WHERE id = \?/i.test(cleanSql)) {
       const id = params[0];
@@ -347,6 +407,48 @@ async function initializeDatabase() {
     // Test the actual connection pool
     const connection = await promisePool.getConnection();
     console.log('✅ MySQL Database Connected Successfully (XAMPP/Live)');
+    
+    // Run schema alterations
+    try {
+      console.log('🚀 Running database schema alterations (live MySQL)...');
+      
+      // 1. Alter status enum
+      await promisePool.query(`
+        ALTER TABLE complaints MODIFY COLUMN status ENUM(
+          'Submitted', 'Seen', 'In Progress', 'Escalated', 'Resolved', 'Closed',
+          'Pending HOD Verification', 'Returned For Rework', 'Verified & Closed'
+        ) DEFAULT 'Submitted';
+      `);
+      
+      // 2. Add dynamic operational & supervision columns if they don't exist
+      const addColumns = [
+        "ALTER TABLE complaints ADD COLUMN priority ENUM('Low', 'Medium', 'High', 'Critical') DEFAULT 'Medium';",
+        "ALTER TABLE complaints ADD COLUMN is_emergency BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE complaints ADD COLUMN rapid_response_assigned BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE complaints ADD COLUMN is_frozen BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE complaints ADD COLUMN hod_notes TEXT DEFAULT NULL;",
+        "ALTER TABLE complaints ADD COLUMN warnings TEXT DEFAULT NULL;",
+        "ALTER TABLE complaints ADD COLUMN clarification_requests TEXT DEFAULT NULL;",
+        "ALTER TABLE complaints ADD COLUMN disciplinary_actions TEXT DEFAULT NULL;",
+        "ALTER TABLE complaints ADD COLUMN resolution_overrides TEXT DEFAULT NULL;",
+        "ALTER TABLE complaints ADD COLUMN escalated_to_admin BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE complaints ADD COLUMN escalation_reason TEXT DEFAULT NULL;",
+        "ALTER TABLE complaints ADD COLUMN escalation_severity VARCHAR(50) DEFAULT NULL;",
+        "ALTER TABLE complaints ADD COLUMN escalation_urgency_notes TEXT DEFAULT NULL;"
+      ];
+
+      for (const colQuery of addColumns) {
+        try {
+          await promisePool.query(colQuery);
+        } catch (e) {
+          // Ignore error if column already exists
+        }
+      }
+      console.log('✓ Database schema alterations complete!');
+    } catch (migErr) {
+      console.warn('⚠️ live MySQL schema alteration warning:', migErr.message);
+    }
+    
     connection.release();
     activePool = promisePool;
   } catch (err) {

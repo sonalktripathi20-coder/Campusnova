@@ -337,6 +337,99 @@ app.post('/api/complaints/:id/support', async (req, res) => {
   }
 });
 
+// 9.5 Dynamic Field Update Endpoint
+app.put('/api/complaints/:id/fields', async (req, res) => {
+  const { id } = req.params;
+  const fields = req.body;
+
+  if (!fields || Object.keys(fields).length === 0) {
+    return res.status(400).json({ error: 'No fields provided for update.' });
+  }
+
+  try {
+    const keys = [];
+    const values = [];
+
+    Object.entries(fields).forEach(([key, val]) => {
+      // Map JS camelCase parameters to SQL snake_case column names
+      let dbCol = key;
+      if (key === 'assignedTeacherId') dbCol = 'assigned_teacher_id';
+      else if (key === 'assignedTeacherName') dbCol = 'assigned_teacher_name';
+      else if (key === 'escalationTimerEnds') dbCol = 'escalation_timer_ends';
+      else if (key === 'resolvedAt') dbCol = 'resolved_at';
+      else if (key === 'resolvedBy') dbCol = 'resolved_by';
+      else if (key === 'resolutionDetails') dbCol = 'resolution_details';
+      else if (key === 'resolutionRemarks') dbCol = 'resolution_remarks';
+      else if (key === 'feedbackRating') dbCol = 'feedback_rating';
+      else if (key === 'feedbackComment') dbCol = 'feedback_comment';
+      else if (key === 'reopenedCount') dbCol = 'reopened_count';
+      else if (key === 'protectedIdentity') dbCol = 'protected_identity';
+      
+      // Dynamic custom supervision fields
+      else if (key === 'isEmergency') dbCol = 'is_emergency';
+      else if (key === 'rapidResponseAssigned') dbCol = 'rapid_response_assigned';
+      else if (key === 'isFrozen') dbCol = 'is_frozen';
+      else if (key === 'hodNotes') dbCol = 'hod_notes';
+      else if (key === 'escalatedToAdmin') dbCol = 'escalated_to_admin';
+      else if (key === 'escalationReason') dbCol = 'escalation_reason';
+      else if (key === 'escalationSeverity') dbCol = 'escalation_severity';
+      else if (key === 'escalationUrgencyNotes') dbCol = 'escalation_urgency_notes';
+      
+      // Arrays or objects like warnings/disciplinaryActions/clarificationRequests
+      else if (key === 'warnings') dbCol = 'warnings';
+      else if (key === 'clarificationRequests') dbCol = 'clarification_requests';
+      else if (key === 'disciplinaryActions') dbCol = 'disciplinary_actions';
+      else if (key === 'resolutionOverrides') dbCol = 'resolution_overrides';
+
+      // Serialize arrays/objects to JSON strings for database columns
+      let finalVal = val;
+      if (Array.isArray(val) || (val !== null && typeof val === 'object')) {
+        finalVal = JSON.stringify(val);
+      } else if (typeof val === 'boolean') {
+        finalVal = val ? 1 : 0;
+      }
+
+      keys.push(`\`${dbCol}\` = ?`);
+      values.push(finalVal);
+    });
+
+    const sql = `UPDATE complaints SET ${keys.join(', ')} WHERE id = ?`;
+    await db.query(sql, [...values, id]);
+
+    res.json({ success: true, message: 'Fields updated successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Database dynamic update failed.', details: err.message });
+  }
+});
+
+// 9.6 Persist Activity Log Endpoint
+app.post('/api/logs', async (req, res) => {
+  const { complaintId, complaintTitle, userRole, userName, action, details } = req.body;
+
+  if (!complaintId || !action || !details) {
+    return res.status(400).json({ error: 'Missing mandatory logging fields.' });
+  }
+
+  try {
+    const sql = `
+      INSERT INTO activity_logs (complaint_id, complaint_title, user_role, user_name, action, details)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+    await db.query(sql, [
+      complaintId,
+      complaintTitle || 'General Case',
+      userRole || 'system',
+      userName || 'System SLA Bot',
+      action,
+      details
+    ]);
+
+    res.status(201).json({ success: true, message: 'Log persisted successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Database logging failed.', details: err.message });
+  }
+});
+
 // 10. Delete Complaint (Permitted for Closed Cases)
 app.delete('/api/complaints/:id', async (req, res) => {
   const { id } = req.params;

@@ -119,7 +119,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           assignedTeacherId: c.assigned_teacher_id,
           assignedTeacherName: c.assigned_teacher_name,
           supportCount: c.support_count || 0,
-          supportedBy: c.supported_by ? JSON.parse(c.supported_by) : [],
+          supportedBy: c.supported_by ? (typeof c.supported_by === 'string' ? JSON.parse(c.supported_by) : c.supported_by) : [],
           createdAt: c.created_at,
           updatedAt: c.updated_at,
           escalationTimerEnds: c.escalation_timer_ends,
@@ -130,7 +130,20 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           feedbackRating: c.feedback_rating,
           feedbackComment: c.feedback_comment,
           reopenedCount: c.reopened_count || 0,
-          attachments: c.attachments ? JSON.parse(c.attachments) : []
+          attachments: c.attachments ? (typeof c.attachments === 'string' ? JSON.parse(c.attachments) : c.attachments) : [],
+          // Custom / Operational fields mapping from DB columns
+          isEmergency: c.is_emergency === 1 || c.is_emergency === true,
+          rapidResponseAssigned: c.rapid_response_assigned === 1 || c.rapid_response_assigned === true,
+          isFrozen: c.is_frozen === 1 || c.is_frozen === true,
+          hodNotes: c.hod_notes,
+          warnings: c.warnings ? (typeof c.warnings === 'string' ? JSON.parse(c.warnings) : c.warnings) : [],
+          clarificationRequests: c.clarification_requests ? (typeof c.clarification_requests === 'string' ? JSON.parse(c.clarification_requests) : c.clarification_requests) : [],
+          disciplinaryActions: c.disciplinary_actions ? (typeof c.disciplinary_actions === 'string' ? JSON.parse(c.disciplinary_actions) : c.disciplinary_actions) : [],
+          resolutionOverrides: c.resolution_overrides ? (typeof c.resolution_overrides === 'string' ? JSON.parse(c.resolution_overrides) : c.resolution_overrides) : [],
+          escalatedToAdmin: c.escalated_to_admin === 1 || c.escalated_to_admin === true,
+          escalationReason: c.escalation_reason,
+          escalationSeverity: c.escalation_severity,
+          escalationUrgencyNotes: c.escalation_urgency_notes
         }));
 
         const mappedLogs: ActivityLog[] = dbLogs.map((l: any) => ({
@@ -510,17 +523,20 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!currentUser) return;
     const now = new Date();
 
+    const targetComplaint = complaints.find(c => c.id === complaintId);
+    if (!targetComplaint) return;
+
+    let slaHours = 24;
+    if (priority === 'Low') slaHours = 48;
+    else if (priority === 'Medium') slaHours = 24;
+    else if (priority === 'High') slaHours = 12;
+    else if (priority === 'Critical') slaHours = 6;
+    
+    const createdAtTime = new Date(targetComplaint.createdAt).getTime();
+    const newEscalationEnds = new Date(createdAtTime + slaHours * 60 * 60 * 1000).toISOString();
+
     const updatedComplaints = complaints.map(c => {
       if (c.id === complaintId) {
-        let slaHours = 24;
-        if (priority === 'Low') slaHours = 48;
-        else if (priority === 'Medium') slaHours = 24;
-        else if (priority === 'High') slaHours = 12;
-        else if (priority === 'Critical') slaHours = 6;
-        
-        const createdAtTime = new Date(c.createdAt).getTime();
-        const newEscalationEnds = new Date(createdAtTime + slaHours * 60 * 60 * 1000).toISOString();
-
         return {
           ...c,
           priority,
@@ -534,13 +550,37 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const newLog: ActivityLog = {
       id: `log-${Math.random().toString(36).substr(2, 9)}`,
       complaintId,
-      complaintTitle: complaints.find(c => c.id === complaintId)?.title || 'Unknown',
+      complaintTitle: targetComplaint.title || 'Unknown',
       userRole: currentUser.role,
       userName: currentUser.name,
       action: 'Priority Updated',
       details: `Complaint priority escalated/changed to ${priority}.`,
       timestamp: now.toISOString()
     };
+
+    // REST Sync Action
+    try {
+      await fetch(`${BACKEND_URL}/api/complaints/${complaintId}/fields`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ priority, escalationTimerEnds: newEscalationEnds })
+      });
+      
+      await fetch(`${BACKEND_URL}/api/logs`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          complaintId,
+          complaintTitle: targetComplaint.title,
+          userRole: currentUser.role,
+          userName: currentUser.name,
+          action: 'Priority Updated',
+          details: `Complaint priority escalated/changed to ${priority}.`
+        })
+      });
+    } catch (err) {
+      console.warn('Failed to sync priority update with backend database');
+    }
 
     syncStorage(updatedComplaints, [newLog, ...activityLogs], notifications);
   };
@@ -1022,7 +1062,7 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Generic field updates
-  const updateComplaintFields = (complaintId: string, fields: Partial<Complaint>) => {
+  const updateComplaintFields = async (complaintId: string, fields: Partial<Complaint>) => {
     const updatedComplaints = complaints.map(c => {
       if (c.id === complaintId) {
         return {
@@ -1034,12 +1074,24 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return c;
     });
 
+    // REST Sync Action
+    try {
+      await fetch(`${BACKEND_URL}/api/complaints/${complaintId}/fields`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(fields)
+      });
+    } catch (err) {
+      console.warn('Failed to sync field updates with backend database');
+    }
+
     syncStorage(updatedComplaints, activityLogs, notifications);
   };
 
-  const addActivityLog = (complaintId: string, action: string, details: string) => {
+  const addActivityLog = async (complaintId: string, action: string, details: string) => {
     if (!currentUser) return;
     const target = complaints.find(c => c.id === complaintId);
+    const now = new Date();
     const newLog: ActivityLog = {
       id: `log-${Math.random().toString(36).substr(2, 9)}`,
       complaintId,
@@ -1048,8 +1100,27 @@ export const PortalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       userName: currentUser.name,
       action,
       details,
-      timestamp: new Date().toISOString()
+      timestamp: now.toISOString()
     };
+
+    // REST Sync Action
+    try {
+      await fetch(`${BACKEND_URL}/api/logs`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          complaintId,
+          complaintTitle: target ? target.title : 'General Case',
+          userRole: currentUser.role,
+          userName: currentUser.name,
+          action,
+          details
+        })
+      });
+    } catch (err) {
+      console.warn('Failed to sync activity log with backend database');
+    }
+
     syncStorage(complaints, [newLog, ...activityLogs], notifications);
   };
 

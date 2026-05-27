@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS complaints (
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
     category ENUM('Lecturer / ERP / Marks', 'Maintenance', 'Harassment') NOT NULL,
-    status ENUM('Submitted', 'Seen', 'In Progress', 'Escalated', 'Resolved', 'Closed') DEFAULT 'Submitted',
+    status ENUM('Submitted', 'Seen', 'In Progress', 'Escalated', 'Resolved', 'Closed', 'Pending HOD Verification', 'Returned For Rework', 'Verified & Closed') DEFAULT 'Submitted',
     anonymous BOOLEAN DEFAULT FALSE,
     protected_identity BOOLEAN DEFAULT FALSE,
     student_id VARCHAR(50) NOT NULL,
@@ -35,6 +35,21 @@ CREATE TABLE IF NOT EXISTS complaints (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     escalation_timer_ends TIMESTAMP NOT NULL,
+    
+    -- Operational & Supervision Fields
+    priority ENUM('Low', 'Medium', 'High', 'Critical') DEFAULT 'Medium',
+    is_emergency BOOLEAN DEFAULT FALSE,
+    rapid_response_assigned BOOLEAN DEFAULT FALSE,
+    is_frozen BOOLEAN DEFAULT FALSE,
+    hod_notes TEXT DEFAULT NULL,
+    warnings TEXT DEFAULT NULL, -- JSON serialized array
+    clarification_requests TEXT DEFAULT NULL, -- JSON serialized array
+    disciplinary_actions TEXT DEFAULT NULL, -- JSON serialized array
+    resolution_overrides TEXT DEFAULT NULL, -- JSON serialized array
+    escalated_to_admin BOOLEAN DEFAULT FALSE,
+    escalation_reason TEXT DEFAULT NULL,
+    escalation_severity VARCHAR(50) DEFAULT NULL,
+    escalation_urgency_notes TEXT DEFAULT NULL,
     
     -- Resolution fields
     resolved_at TIMESTAMP NULL DEFAULT NULL,
