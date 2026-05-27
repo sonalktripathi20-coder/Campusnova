@@ -172,3 +172,13 @@ INSERT INTO users (id, email, password, name, role, department, avatar) VALUES
 ('usr-h1', 'hod@college.edu', 'password123', 'Dr. Anand Verma (HOD)', 'hod', NULL, 'AV'),
 ('usr-a1', 'admin@college.edu', 'password123', 'Director Sarah (Admin)', 'admin', NULL, 'DS')
 ON DUPLICATE KEY UPDATE id=id;
+
+-- ========================================================
+-- PRE-SEEDED DEMO COMPLAINTS DATA
+-- ========================================================
+
+INSERT INTO complaints (id, title, description, category, status, anonymous, protected_identity, student_id, student_name, student_email, assigned_teacher_id, assigned_teacher_name, support_count, escalation_timer_ends, priority, is_emergency, rapid_response_assigned, is_frozen, hod_notes) VALUES
+('GRV-1001', 'Hostel Wifi SLA Breach - Blocks C & D', 'Wifi router in Hostel Block C and D is down for more than 48 hours. No support ticket response from the network admin team.', 'Maintenance', 'In Progress', FALSE, FALSE, 'usr-s1', 'Sonal Tripathi', 'sonal@student.edu', 'usr-t2', 'Maintenance Team', 5, DATE_ADD(NOW(), INTERVAL 1 DAY), 'High', FALSE, FALSE, FALSE, NULL),
+('GRV-1002', 'Marks discrepancy in end-semester DBMS lab exam', 'My end semester DBMS lab marks are displayed as AB (Absent) in the ERP portal, even though I attended the lab exam and submitted the viva sheet to the external examiner.', 'Lecturer / ERP / Marks', 'Pending HOD Verification', FALSE, TRUE, 'usr-s2', 'Kumkum Sen', 'kumkum@student.edu', 'usr-t1', 'Prof. Kashif Sheikh', 1, DATE_ADD(NOW(), INTERVAL 12 HOUR), 'Medium', FALSE, FALSE, FALSE, 'Instructed teacher to review the physical external viva sheet.'),
+('GRV-1003', 'Library Air Conditioning System Out of Order', 'The AC units on the 2nd floor library reading room are malfunctioning. It gets extremely hot and humid during peak study hours.', 'Maintenance', 'Submitted', TRUE, FALSE, 'usr-s3', 'Roshan Kumar', 'roshan@student.edu', 'usr-t2', 'Maintenance Team', 12, DATE_ADD(NOW(), INTERVAL 6 HOUR), 'Critical', TRUE, TRUE, FALSE, NULL)
+ON DUPLICATE KEY UPDATE id=id;

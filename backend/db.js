@@ -31,12 +31,132 @@ const SEED_USERS = [
   { id: 'usr-a1', email: 'admin@college.edu', password: hashedPass, name: 'Director Sarah (Admin)', role: 'admin', department: null, avatar: 'DS' }
 ];
 
+const SEED_COMPLAINTS = [
+  {
+    id: 'GRV-1001',
+    title: 'Hostel Wifi SLA Breach - Blocks C & D',
+    description: 'Wifi router in Hostel Block C and D is down for more than 48 hours. No support ticket response from the network admin team.',
+    category: 'Maintenance',
+    status: 'In Progress',
+    anonymous: false,
+    protected_identity: false,
+    student_id: 'usr-s1',
+    student_name: 'Sonal Tripathi',
+    student_email: 'sonal@student.edu',
+    assigned_teacher_id: 'usr-t2',
+    assigned_teacher_name: 'Maintenance Team',
+    support_count: 5,
+    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    escalation_timer_ends: new Date(Date.now() + 22 * 60 * 60 * 1000).toISOString(),
+    resolved_at: null,
+    resolved_by: null,
+    resolution_details: null,
+    resolution_remarks: null,
+    feedback_rating: null,
+    feedback_comment: null,
+    reopened_count: 0,
+    attachments: null,
+    priority: 'High',
+    is_emergency: false,
+    rapid_response_assigned: false,
+    is_frozen: false,
+    hod_notes: null,
+    warnings: [],
+    clarification_requests: [],
+    disciplinary_actions: [],
+    resolution_overrides: [],
+    escalated_to_admin: false,
+    escalation_reason: null,
+    escalation_severity: null,
+    escalation_urgency_notes: null
+  },
+  {
+    id: 'GRV-1002',
+    title: 'Marks discrepancy in end-semester DBMS lab exam',
+    description: 'My end semester DBMS lab marks are displayed as AB (Absent) in the ERP portal, even though I attended the lab exam and submitted the viva sheet to the external examiner.',
+    category: 'Lecturer / ERP / Marks',
+    status: 'Pending HOD Verification',
+    anonymous: false,
+    protected_identity: true,
+    student_id: 'usr-s2',
+    student_name: 'Kumkum Sen',
+    student_email: 'kumkum@student.edu',
+    assigned_teacher_id: 'usr-t1',
+    assigned_teacher_name: 'Prof. Kashif Sheikh',
+    support_count: 1,
+    created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    escalation_timer_ends: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+    resolved_at: null,
+    resolved_by: null,
+    resolution_details: 'ERP sheet updated. Pending HOD signing authorization.',
+    resolution_remarks: 'External examiner marks sheet obtained and verified.',
+    feedback_rating: null,
+    feedback_comment: null,
+    reopened_count: 0,
+    attachments: null,
+    priority: 'Medium',
+    is_emergency: false,
+    rapid_response_assigned: false,
+    is_frozen: false,
+    hod_notes: 'Instructed teacher to review the physical external viva sheet.',
+    warnings: [],
+    clarification_requests: [],
+    disciplinary_actions: [],
+    resolution_overrides: [],
+    escalated_to_admin: false,
+    escalation_reason: null,
+    escalation_severity: null,
+    escalation_urgency_notes: null
+  },
+  {
+    id: 'GRV-1003',
+    title: 'Library Air Conditioning System Out of Order',
+    description: 'The AC units on the 2nd floor library reading room are malfunctioning. It gets extremely hot and humid during peak study hours.',
+    category: 'Maintenance',
+    status: 'Submitted',
+    anonymous: true,
+    protected_identity: false,
+    student_id: 'usr-s3',
+    student_name: 'Roshan Kumar',
+    student_email: 'roshan@student.edu',
+    assigned_teacher_id: 'usr-t2',
+    assigned_teacher_name: 'Maintenance Team',
+    support_count: 12,
+    created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    escalation_timer_ends: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
+    resolved_at: null,
+    resolved_by: null,
+    resolution_details: null,
+    resolution_remarks: null,
+    feedback_rating: null,
+    feedback_comment: null,
+    reopened_count: 0,
+    attachments: null,
+    priority: 'Critical',
+    is_emergency: true,
+    rapid_response_assigned: true,
+    is_frozen: false,
+    hod_notes: null,
+    warnings: [],
+    clarification_requests: [],
+    disciplinary_actions: [],
+    resolution_overrides: [],
+    escalated_to_admin: false,
+    escalation_reason: null,
+    escalation_severity: null,
+    escalation_urgency_notes: null
+  }
+];
+
 // Load or Initialize JSON database
 function loadJsonDatabase() {
   if (!fs.existsSync(JSON_DB_PATH)) {
     const initialDb = {
       users: SEED_USERS,
-      complaints: [],
+      complaints: SEED_COMPLAINTS,
       activity_logs: [],
       notifications: [],
       supported_complaints: []
@@ -47,13 +167,16 @@ function loadJsonDatabase() {
   try {
     const data = JSON.parse(fs.readFileSync(JSON_DB_PATH, 'utf8'));
     data.users = SEED_USERS;
+    if (!data.complaints || data.complaints.length === 0) {
+      data.complaints = SEED_COMPLAINTS;
+    }
     fs.writeFileSync(JSON_DB_PATH, JSON.stringify(data, null, 2), 'utf8');
     return data;
   } catch (err) {
     console.error('⚠️ JSON Database read failed, recreating...', err.message);
     const initialDb = {
       users: SEED_USERS,
-      complaints: [],
+      complaints: SEED_COMPLAINTS,
       activity_logs: [],
       notifications: [],
       supported_complaints: []
